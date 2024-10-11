@@ -1,9 +1,13 @@
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
+import TextInput from './components/Input';
 
 function Hello() {
   return (
-   <div>hello</div>
+    <div>
+      hello
+      <TextInput onSubmit={() => {}} />
+    </div>
   );
 }
 

@@ -1,7 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 /*
  * @NOTE: Prepend a `~` to css file paths that are in your node_modules
  *        See https://github.com/webpack-contrib/sass-loader#imports
  */
+
+
 body {
   position: relative;
   color: white;
@@ -12,7 +17,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  -webkit-app-region: drag;
+  /* -webkit-app-region: drag; */
 }
 
 button {

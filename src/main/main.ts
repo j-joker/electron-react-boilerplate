@@ -79,6 +79,8 @@ const createWindow = async () => {
         ? path.join(__dirname, 'preload.js')
         : path.join(__dirname, '../../.erb/dll/preload.js'),
     },
+    transparent: true,  // Add this line
+    frame: false,       // Add this line
   });
 
   mainWindow.loadURL(resolveHtmlPath('index.html'));

@@ -5,8 +5,7 @@ import TextInput from './components/Input';
 function Hello() {
   return (
     <div>
-      hello
-      <TextInput onSubmit={() => {}} />
+      ****
     </div>
   );
 }

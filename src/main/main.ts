@@ -9,7 +9,7 @@
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
 import path from 'path';
-import { app, BrowserWindow, shell, ipcMain, globalShortcut } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, globalShortcut, clipboard, screen } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
@@ -23,25 +23,62 @@ class AppUpdater {
   }
 }
 
-let mainWindow: BrowserWindow | null = null;
+
+
+let starWindow: BrowserWindow | null = null;
+
+function showStarAtCursor() {
+  // Get mouse cursor absolute position
+  const { x, y } = screen.getCursorScreenPoint();
+  
+  // Find the display where the mouse cursor is
+  const currentDisplay = screen.getDisplayNearestPoint({ x, y });
+
+  if (!starWindow) {
+    starWindow = new BrowserWindow({
+      width: 20,
+      height: 20,
+      frame: false,
+      transparent: true,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      focusable: false,
+      show: false, // Initially hidden
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false,
+      },
+    });
+
+    starWindow.loadURL(`data:text/html,<html><body style="margin:0;display:flex;justify-content:center;align-items:center;font-size:20px;">⭐</body></html>`);
+
+    starWindow.on('closed', () => {
+      starWindow = null;
+    });
+  }
+
+  // Set window position to the cursor position
+  starWindow.setPosition(x - 10, y - 10);
+
+  // Ensure the window is visible on the correct display
+  starWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  starWindow.setAlwaysOnTop(true, 'screen-saver');
+
+  // Show the window
+  starWindow.show();
+}
 
 function registerGlobalShortcut() {
-  globalShortcut.register('CommandOrControl+Shift+I', () => {
-    if (mainWindow) {
-      if (mainWindow.isVisible()) {
-        mainWindow.hide();
-      } else {
-        mainWindow.show();
-      }
-    }
+ 
+
+  globalShortcut.register('CommandOrControl+Shift+X', () => {
+ 
+    showStarAtCursor();
+
   });
 }
 
-ipcMain.on('ipc-example', async (event, arg) => {
-  const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
-  console.log(msgTemplate(arg));
-  event.reply('ipc-example', msgTemplate('pong'));
-});
+
 
 if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
@@ -68,63 +105,7 @@ const installExtensions = async () => {
     .catch(console.log);
 };
 
-const createWindow = async () => {
-  if (isDebug) {
-    await installExtensions();
-  }
 
-  const RESOURCES_PATH = app.isPackaged
-    ? path.join(process.resourcesPath, 'assets')
-    : path.join(__dirname, '../../assets');
-
-  const getAssetPath = (...paths: string[]): string => {
-    return path.join(RESOURCES_PATH, ...paths);
-  };
-
-  mainWindow = new BrowserWindow({
-    show: true,
-    width: 1024,
-    height: 428,
-    icon: getAssetPath('icon.png'),
-    webPreferences: {
-      preload: app.isPackaged
-        ? path.join(__dirname, 'preload.js')
-        : path.join(__dirname, '../../.erb/dll/preload.js'),
-    },
-    transparent: true,  // Add this line
-    frame: false,       // Add this line
-  });
-
-  mainWindow.loadURL(resolveHtmlPath('index.html'));
-
-  mainWindow.on('ready-to-show', () => {
-    if (!mainWindow) {
-      throw new Error('"mainWindow" is not defined');
-    }
-    if (process.env.START_MINIMIZED) {
-      mainWindow.minimize();
-    } else {
-      mainWindow.show();
-    }
-  });
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
-
-  const menuBuilder = new MenuBuilder(mainWindow);
-  menuBuilder.buildMenu();
-
-  // Open urls in the user's browser
-  mainWindow.webContents.setWindowOpenHandler((edata) => {
-    shell.openExternal(edata.url);
-    return { action: 'deny' };
-  });
-
-  // Remove this if your app does not use auto updates
-  // eslint-disable-next-line
-  new AppUpdater();
-};
 
 /**
  * Add event listeners...
@@ -141,12 +122,12 @@ app.on('window-all-closed', () => {
 app
   .whenReady()
   .then(() => {
-    createWindow();
+    // createWindow();
     registerGlobalShortcut();
     app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the
       // dock icon is clicked and there are no other windows open.
-      if (mainWindow === null) createWindow();
+      // if (mainWindow === null) createWindow();
     });
   })
   .catch(console.log);

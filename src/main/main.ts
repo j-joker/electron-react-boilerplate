@@ -9,7 +9,7 @@
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
 import path from 'path';
-import { app, BrowserWindow, shell, ipcMain, globalShortcut, clipboard, screen } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, globalShortcut, clipboard, screen, } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
@@ -30,62 +30,76 @@ let starWindow: BrowserWindow | null = null;
 function showStarAtCursor() {
   // Get mouse cursor absolute position
   const { x, y } = screen.getCursorScreenPoint();
-  
-  // Find the display where the mouse cursor is
-  const currentDisplay = screen.getDisplayNearestPoint({ x, y });
 
   if (!starWindow) {
     starWindow = new BrowserWindow({
-      width: 20,
-      height: 20,
+      width: 100,
+      height: 100,
       frame: false,
-      transparent: true,
-      alwaysOnTop: true,
-      skipTaskbar: true,
       focusable: false,
-      show: false, // Initially hidden
+      transparent: true,
+      type: 'panel',
+      movable: true, // Prevent user from moving the window
+      backgroundColor: '#00000000', // Fully transparent background
       webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false,
+        preload: app.isPackaged
+          ? path.join(__dirname, 'preload.js')
+          : path.join(__dirname, '../../.erb/dll/preload.js'),
+        nodeIntegration: false,
+        contextIsolation: true,
       },
     });
 
-    starWindow.loadURL(`data:text/html,<html><body style="margin:0;display:flex;justify-content:center;align-items:center;font-size:20px;">⭐</body></html>`);
-
+    // Add this line to hide the window from the dock on macOS
+    if (process.platform === 'darwin') {
+      app.dock.hide();
+    }
+  
+  const currentDisplay = screen.getDisplayNearestPoint({ x, y });
+    starWindow.setPosition(currentDisplay.workArea.x, currentDisplay.workArea.y);
+    starWindow.loadURL(resolveHtmlPath('index.html'));
     starWindow.on('closed', () => {
       starWindow = null;
     });
   }
 
-  // Set window position to the cursor position
-  starWindow.setPosition(x - 10, y - 10);
+  // Find the display where the mouse cursor is
+  const currentDisplay = screen.getDisplayNearestPoint({ x, y });
+  
+  // Set window position relative to the current display
+  const relativeX = x - currentDisplay.bounds.x;
+  const relativeY = y - currentDisplay.bounds.y;
+  starWindow.setPosition(currentDisplay.bounds.x + relativeX - 20, currentDisplay.bounds.y + relativeY - 20);
 
-  // Ensure the window is visible on the correct display
-  starWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  // Remove this line
+  // starWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
   starWindow.setAlwaysOnTop(true, 'screen-saver');
 
   // Show the window
   starWindow.show();
 }
 
-function registerGlobalShortcut() {
- 
+function watchClipboard() {
+  let lastText = clipboard.readText();
 
-  globalShortcut.register('CommandOrControl+Shift+X', () => {
- 
-    showStarAtCursor();
-
-  });
+  setInterval(() => {
+    const currentText = clipboard.readText();
+    if (currentText !== lastText) {
+      lastText = currentText;
+      if (currentText.trim() !== '') {
+        showStarAtCursor();
+      }
+    }
+  }, 200); // Check every 200ms
 }
-
-
 
 if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
   sourceMapSupport.install();
 }
 
-const isDebug = true
+const isDebug = false
   // process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
 
 if (isDebug) {
@@ -123,7 +137,7 @@ app
   .whenReady()
   .then(() => {
     // createWindow();
-    registerGlobalShortcut();
+    watchClipboard();
     app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the
       // dock icon is clicked and there are no other windows open.
